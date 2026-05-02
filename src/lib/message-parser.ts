@@ -1,7 +1,7 @@
-import { FLOWERS, GIFT_ADDONS } from "./knowledge-base";
+import { BOUQUETS, GIFT_ADDONS } from "./knowledge-base";
 
 export type ParsedBouquet = {
-  flowerId: string;
+  bouquetId: string;
   stems: number;
   price: number;
 };
@@ -20,8 +20,8 @@ export type ParsedMessage = {
   addons: ParsedAddon[];
 };
 
-const BOUQUET_RE = /\[BOUQUET:([a-z-]+)\|(\d+)\|(\d+)\]/gi;
-const ADDON_RE = /\[ADDON:([a-z-]+)\|(\d+)\]/gi;
+const BOUQUET_RE = /\[BOUQUET:([a-z0-9-]+)\|(\d+)\|(\d+)\]/gi;
+const ADDON_RE = /\[ADDON:([a-z0-9-]+)\|(\d+)\]/gi;
 
 /**
  * Извлекает служебные метки из ответа AI и возвращает структурированные данные
@@ -33,9 +33,9 @@ export function parseAssistantMessage(raw: string): ParsedMessage {
 
   Array.from(raw.matchAll(BOUQUET_RE)).forEach((m) => {
     const id = m[1];
-    if (FLOWERS.some((f) => f.id === id)) {
+    if (BOUQUETS.some((b) => b.id === id)) {
       bouquets.push({
-        flowerId: id,
+        bouquetId: id,
         stems: parseInt(m[2], 10),
         price: parseInt(m[3], 10),
       });

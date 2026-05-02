@@ -6,6 +6,7 @@ import {
   getMemory,
   summarizeMemoryForPrompt,
 } from "@/lib/memory";
+import { getStems } from "@/lib/excel-loader";
 
 export const runtime = "nodejs";
 
@@ -44,11 +45,13 @@ export async function POST(req: NextRequest) {
   const memory = userId ? await getMemory(userId) : null;
   const memoryContext = memory ? summarizeMemoryForPrompt(memory) : null;
 
+  const stems = await getStems();
   const genAI = new GoogleGenerativeAI(apiKey);
   const modelName = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
+  const systemInstruction = buildSystemInstruction(memoryContext, stems);
   const model = genAI.getGenerativeModel({
     model: modelName,
-    systemInstruction: buildSystemInstruction(memoryContext),
+    systemInstruction,
     generationConfig: {
       temperature: 0.85,
       topP: 0.95,

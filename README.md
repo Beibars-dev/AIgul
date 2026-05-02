@@ -25,9 +25,27 @@
 |---|---|
 | Frontend | Next.js 14 (App Router), React 18, TypeScript |
 | UI | Tailwind CSS, Framer Motion, Lucide Icons |
-| AI | Google Gemini 2.0 Flash (`@google/generative-ai`) |
-| RAG | Структурированная база знаний магазина (каталог + правила + гайд по поводам), инжектится в `systemInstruction` |
-| Backend | Next.js API Routes (`/api/chat`, `/api/order`) |
+| AI | Google Gemini 2.5 Flash (`@google/generative-ai`) |
+| RAG | **Excel-каталог** магазина → парсинг через SheetJS → инжект в `systemInstruction` + готовые букеты с фото + гайды по поводам |
+| Memory | Профиль клиента + история заказов + история чатов (file-based, по `userId` в localStorage) |
+| Backend | Next.js API Routes (`/api/chat`, `/api/order`, `/api/memory`) |
+
+## 📊 RAG из Excel — как магазин обновляет каталог
+
+Магазин выгружает свой каталог в файл **`data/source/flowers.xlsx`** со следующими столбцами (русский или английский язык — алиасы поддерживаются):
+
+| ID | Название (RU) | Название (KZ) | Цвет | Цена (тг) | Наличие | Повод | Кому дарить | Значение / Символика | Сезон |
+|---|---|---|---|---|---|---|---|---|---|
+
+При следующем запросе клиента приложение **автоматически перечитывает файл** (по mtime) и передаёт актуальный каталог в системный промпт Gemini. Никакого пересоздания, никакого ребилда — просто заменили `.xlsx` и магазин «переобучен».
+
+В репо лежит готовый шаблон с 15 цветами. Регенерировать его можно командой:
+
+```bash
+node scripts/generate-flowers-xlsx.mjs
+```
+
+**Готовые букеты** (с реальными фото) лежат в `src/lib/bouquets.ts` — их собирают из позиций Excel-каталога. Когда AI рекомендует букет, на клиенте автоматически рендерится красивая карточка с фотографией.
 
 ---
 
@@ -68,25 +86,40 @@ npm run dev
 ## 🏗️ Структура проекта
 
 ```
+data/
+├── source/flowers.xlsx          # 📊 Excel-каталог магазина (RAG-источник)
+└── memories/                    # 🧠 Память клиентов (по userId, gitignored)
+
+scripts/
+└── generate-flowers-xlsx.mjs    # Генератор шаблонного Excel
+
 src/
 ├── app/
-│   ├── layout.tsx              # Глобальный layout (шрифты, метаданные)
-│   ├── page.tsx                # Главная: Hero + Chat + How it works
-│   ├── globals.css             # Tailwind + кастомные анимации
-│   ├── catalog/page.tsx        # Каталог цветов с фильтрами
-│   ├── checkout/page.tsx       # Оформление заказа (с автозаполнением из чата)
+│   ├── layout.tsx
+│   ├── page.tsx                 # Hero + Chat + How it works
+│   ├── globals.css
+│   ├── catalog/page.tsx         # Каталог: готовые букеты + Excel-таблица
+│   ├── checkout/page.tsx        # Заказ с автозаполнением из памяти
 │   └── api/
-│       ├── chat/route.ts       # Gemini chat endpoint (с RAG-контекстом)
-│       └── order/route.ts      # Приём заказов
+│       ├── chat/route.ts        # Gemini chat (RAG + memory)
+│       ├── order/route.ts       # Приём заказов + сохранение в memory
+│       └── memory/route.ts      # GET/DELETE памяти клиента
 ├── components/
-│   ├── Header.tsx              # Шапка с навигацией
-│   ├── Hero.tsx                # Hero-секция с анимациями
-│   ├── ChatInterface.tsx       # ⭐ Главный компонент — чат с AI-агентом
-│   ├── HowItWorks.tsx          # Секция «как это работает»
-│   └── Footer.tsx              # Подвал
+│   ├── Header.tsx
+│   ├── Hero.tsx
+│   ├── ChatInterface.tsx        # ⭐ Чат с AI-агентом (markdown + карточки)
+│   ├── BouquetCard.tsx          # Карточка букета прямо в чате
+│   ├── CatalogTabs.tsx          # Табы готовые/одиночные
+│   ├── HowItWorks.tsx
+│   └── Footer.tsx
 └── lib/
-    ├── knowledge-base.ts       # 🧠 База знаний магазина (RAG-данные)
-    └── system-prompt.ts        # 🎯 Системный промпт для Gemini
+    ├── excel-loader.ts          # 📊 Парсер Excel + кэш по mtime
+    ├── bouquets.ts              # Готовые букеты с фото
+    ├── knowledge-base.ts        # Сборка RAG-контекста (Excel + букеты + гайды)
+    ├── system-prompt.ts         # 🎯 Системный промпт для Gemini
+    ├── memory.ts                # 🧠 Persistence-слой памяти клиента
+    ├── message-parser.ts        # Парсинг служебных меток + markdown
+    └── use-user-id.ts           # Хук для userId в localStorage
 ```
 
 ---

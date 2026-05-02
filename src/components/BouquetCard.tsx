@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Sparkles, ShoppingBag, Truck } from "lucide-react";
-import { FLOWERS, GIFT_ADDONS } from "@/lib/knowledge-base";
+import { BOUQUETS, GIFT_ADDONS } from "@/lib/knowledge-base";
 import type { ParsedBouquet, ParsedAddon } from "@/lib/message-parser";
 
 type Props = {
@@ -14,13 +14,10 @@ type Props = {
 };
 
 export default function BouquetCard({ bouquet, addon, onCheckout }: Props) {
-  const flower = FLOWERS.find((f) => f.id === bouquet.flowerId);
-  if (!flower) return null;
+  const product = BOUQUETS.find((b) => b.id === bouquet.bouquetId);
+  if (!product) return null;
 
-  const addonData = addon
-    ? GIFT_ADDONS.find((a) => a.id === addon.addonId)
-    : null;
-
+  const addonData = addon ? GIFT_ADDONS.find((a) => a.id === addon.addonId) : null;
   const total = bouquet.price + (addonData?.price ?? 0);
 
   return (
@@ -32,8 +29,8 @@ export default function BouquetCard({ bouquet, addon, onCheckout }: Props) {
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-cream-100">
         <Image
-          src={flower.image}
-          alt={flower.name}
+          src={product.image}
+          alt={product.name}
           fill
           sizes="(max-width: 768px) 100vw, 600px"
           className="object-cover"
@@ -43,13 +40,13 @@ export default function BouquetCard({ bouquet, addon, onCheckout }: Props) {
           Рекомендация Айгуль
         </div>
         <div className="absolute right-3 top-3 rounded-full bg-foreground/85 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
-          {flower.category}
+          {product.category}
         </div>
       </div>
 
       <div className="p-5">
         <h3 className="font-serif text-2xl font-semibold leading-tight">
-          {flower.name}
+          {product.name}
         </h3>
 
         <div className="mt-2 flex items-baseline gap-2">
@@ -63,11 +60,11 @@ export default function BouquetCard({ bouquet, addon, onCheckout }: Props) {
         </div>
 
         <p className="mt-3 text-sm leading-relaxed text-foreground/70">
-          {flower.description}
+          {product.description}
         </p>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {flower.vibe.slice(0, 4).map((v) => (
+          {product.vibe.slice(0, 4).map((v) => (
             <span
               key={v}
               className="rounded-full bg-sage-50 px-2.5 py-1 text-[11px] text-sage-800"
@@ -82,12 +79,8 @@ export default function BouquetCard({ bouquet, addon, onCheckout }: Props) {
             <div className="flex items-center gap-2">
               <span className="text-xl">🎁</span>
               <div>
-                <p className="text-sm font-medium leading-tight">
-                  {addonData.name}
-                </p>
-                <p className="text-[11px] text-foreground/60">
-                  {addonData.description}
-                </p>
+                <p className="text-sm font-medium leading-tight">{addonData.name}</p>
+                <p className="text-[11px] text-foreground/60">{addonData.description}</p>
               </div>
             </div>
             <span className="whitespace-nowrap text-sm font-semibold text-rose-deep">

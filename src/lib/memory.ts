@@ -11,8 +11,8 @@
  * (serverless ФС read-only кроме /tmp).
  */
 
-import fs from "node:fs/promises";
-import path from "node:path";
+import fs from "fs/promises";
+import path from "path";
 
 export type ChatTurn = {
   role: "user" | "assistant";
