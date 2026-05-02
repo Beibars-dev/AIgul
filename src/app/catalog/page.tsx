@@ -9,14 +9,19 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { FLOWERS, FlowerProduct } from "@/lib/knowledge-base";
 
+/**
+ * Build categories dynamically from the XLSX catalog data.
+ * Group by color since the XLSX doesn't have explicit categories.
+ */
 const CATEGORIES = [
   { id: "all", label: "Все" },
-  { id: "пионы", label: "Пионы" },
-  { id: "розы", label: "Розы" },
-  { id: "тюльпаны", label: "Тюльпаны" },
-  { id: "композиции", label: "Композиции" },
-  { id: "альстромерии", label: "Альстромерии" },
-  { id: "экзотика", label: "Экзотика" },
+  { id: "Красный", label: "🌹 Красные" },
+  { id: "Розовый", label: "🌸 Розовые" },
+  { id: "Белый", label: "🤍 Белые" },
+  { id: "Жёлтый", label: "🌻 Жёлтые" },
+  { id: "Фиолетовый", label: "💜 Фиолетовые" },
+  { id: "Синий", label: "💙 Синие" },
+  { id: "Оранжевый", label: "🧡 Оранжевые" },
 ];
 
 function priceRange(f: FlowerProduct) {
@@ -30,7 +35,11 @@ function priceRange(f: FlowerProduct) {
 export default function CatalogPage() {
   const [active, setActive] = useState("all");
   const filtered =
-    active === "all" ? FLOWERS : FLOWERS.filter((f) => f.category === active);
+    active === "all"
+      ? FLOWERS
+      : FLOWERS.filter((f) =>
+          f.color.toLowerCase().includes(active.toLowerCase()),
+        );
 
   return (
     <main className="min-h-screen">
@@ -99,19 +108,25 @@ export default function CatalogPage() {
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium uppercase tracking-wider text-foreground/70 backdrop-blur-sm">
-                  {f.category}
+                  {f.color}
                 </div>
+                {f.season !== "Круглый год" && (
+                  <div className="absolute right-3 top-3 rounded-full bg-sage-50/90 px-3 py-1 text-xs font-medium text-sage-800 backdrop-blur-sm">
+                    🗓 {f.season}
+                  </div>
+                )}
               </div>
               <div className="p-6">
                 <h3 className="font-serif text-2xl font-semibold leading-tight">
                   {f.name}
                 </h3>
+                <p className="mt-1 text-sm text-foreground/50">{f.nameKz}</p>
                 <p className="mt-2 line-clamp-2 text-sm text-foreground/60">
-                  {f.description}
+                  {f.meaning}
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-1.5">
-                  {f.vibe.slice(0, 3).map((v) => (
+                  {f.bestFor.slice(0, 3).map((v) => (
                     <span
                       key={v}
                       className="rounded-full bg-sage-50 px-2.5 py-1 text-[11px] text-sage-800"
@@ -125,7 +140,7 @@ export default function CatalogPage() {
                   <div>
                     <p className="text-xs text-foreground/50">от</p>
                     <p className="font-serif text-2xl font-semibold text-rose-deep">
-                      {priceRange(f)}
+                      {f.pricePerStem.toLocaleString("ru-RU")} ₸/шт
                     </p>
                   </div>
                   <Link

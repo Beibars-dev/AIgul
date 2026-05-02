@@ -43,7 +43,7 @@ export default function BouquetCard({ bouquet, addon, onCheckout }: Props) {
           Рекомендация Айгуль
         </div>
         <div className="absolute right-3 top-3 rounded-full bg-foreground/85 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
-          {flower.category}
+          {flower.color}
         </div>
       </div>
 
@@ -63,11 +63,11 @@ export default function BouquetCard({ bouquet, addon, onCheckout }: Props) {
         </div>
 
         <p className="mt-3 text-sm leading-relaxed text-foreground/70">
-          {flower.description}
+          {flower.meaning}
         </p>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {flower.vibe.slice(0, 4).map((v) => (
+          {flower.bestFor.slice(0, 4).map((v) => (
             <span
               key={v}
               className="rounded-full bg-sage-50 px-2.5 py-1 text-[11px] text-sage-800"
