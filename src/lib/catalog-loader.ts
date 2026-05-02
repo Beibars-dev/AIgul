@@ -96,13 +96,13 @@ function getFlowerImages(flowerName: string): string[] {
   const manifest = getImageManifest();
   const entry = manifest[flowerName];
   if (!entry) {
-    // fallback: slugify the name and assume 1 image
     const slug = slugify(flowerName);
     return [`/flowers/${slug}/1.jpg`];
   }
+  const ext = (entry as { slug: string; count: number; ext?: string }).ext ?? "jpg";
   const images: string[] = [];
   for (let i = 1; i <= entry.count; i++) {
-    images.push(`/flowers/${entry.slug}/${i}.jpg`);
+    images.push(`/flowers/${entry.slug}/${i}.${ext}`);
   }
   return images;
 }
@@ -116,6 +116,13 @@ function splitCSV(value: string | undefined | null): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+// ─── Static fallback (used when XLSX is absent) ──────────────
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const STATIC_FLOWERS: Record<string, string>[] = (() => {
+  try { return require("../data/flowers-static.json"); } catch { return []; }
+})();
 
 // ─── XLSX parsing ────────────────────────────────────────────
 
@@ -131,12 +138,58 @@ let cached: CatalogData | null = null;
 function parseXLSX(): CatalogData {
   if (cached) return cached;
 
-  const xlsxPath = path.join(process.cwd(), "data", "AIGul_FlowerShop_Catalog.xlsx");
-  const workbook = XLSX.readFile(xlsxPath);
+  let flowersRaw: Record<string, string>[] = STATIC_FLOWERS;
+  let occasions: CatalogOccasion[] = [];
+  let recipients: CatalogRecipient[] = [];
+  let addons: CatalogAddon[] = [];
 
-  // ── Sheet 1: Каталог цветов ──
-  const flowersSheet = workbook.Sheets["Каталог цветов"];
-  const flowersRaw = XLSX.utils.sheet_to_json<Record<string, string>>(flowersSheet);
+  try {
+    const xlsxPath = path.join(process.cwd(), "data", "AIGul_FlowerShop_Catalog.xlsx");
+    const workbook = XLSX.readFile(xlsxPath);
+
+    // ── Sheet 1: Каталог цветов ──
+    const flowersSheet = workbook.Sheets["Каталог цветов"];
+    flowersRaw = XLSX.utils.sheet_to_json<Record<string, string>>(flowersSheet);
+
+    // ── Sheet 2: Поводы и рекомендации ──
+    const occasionsSheet = workbook.Sheets["Поводы и рекомендации"];
+    const occasionsRaw = XLSX.utils.sheet_to_json<Record<string, string>>(occasionsSheet);
+    occasions = occasionsRaw.map((row) => ({
+      occasion: row["Повод"] || "",
+      topFlowers: splitCSV(row["Топ цветы"]),
+      colors: splitCSV(row["Цвета"]),
+      avoid: splitCSV(row["Избегать"]),
+      budget: row["Средний бюджет (тг)"] || "",
+      note: row["Заметка"] || "",
+    }));
+
+    // ── Sheet 3: Кому дарить ──
+    const recipientsSheet = workbook.Sheets["Кому дарить"];
+    const recipientsRaw = XLSX.utils.sheet_to_json<Record<string, string>>(recipientsSheet);
+    recipients = recipientsRaw.map((row) => ({
+      recipient: row["Получатель"] || "",
+      recommended: splitCSV(row["Рекомендованные цветы"]),
+      avoid: splitCSV(row["Нежелательно"]),
+      budget: row["Бюджет (тг)"] || "",
+      agentTip: row["Совет агенту"] || "",
+    }));
+
+    // ── Sheet 4: Дополнения к букету ──
+    const addonsSheet = workbook.Sheets["Дополнения к букету"];
+    const addonsRaw = XLSX.utils.sheet_to_json<Record<string, string>>(addonsSheet);
+    addons = addonsRaw.map((row) => {
+      const name = row["Товар"] || "";
+      return {
+        id: slugify(name),
+        name,
+        price: parseInt(row["Цена (тг)"] || "0", 10),
+        occasions: splitCSV(row["Подходит к поводу"]),
+        description: row["Описание"] || "",
+      };
+    });
+  } catch {
+    // XLSX unavailable — flowers fall back to STATIC_FLOWERS, other sheets stay empty
+  }
 
   const flowers: CatalogFlower[] = flowersRaw.map((row) => {
     const name = row["Название (RU)"] || "";
@@ -156,46 +209,6 @@ function parseXLSX(): CatalogData {
       image: images[0],
       images,
       slug,
-    };
-  });
-
-  // ── Sheet 2: Поводы и рекомендации ──
-  const occasionsSheet = workbook.Sheets["Поводы и рекомендации"];
-  const occasionsRaw = XLSX.utils.sheet_to_json<Record<string, string>>(occasionsSheet);
-
-  const occasions: CatalogOccasion[] = occasionsRaw.map((row) => ({
-    occasion: row["Повод"] || "",
-    topFlowers: splitCSV(row["Топ цветы"]),
-    colors: splitCSV(row["Цвета"]),
-    avoid: splitCSV(row["Избегать"]),
-    budget: row["Средний бюджет (тг)"] || "",
-    note: row["Заметка"] || "",
-  }));
-
-  // ── Sheet 3: Кому дарить ──
-  const recipientsSheet = workbook.Sheets["Кому дарить"];
-  const recipientsRaw = XLSX.utils.sheet_to_json<Record<string, string>>(recipientsSheet);
-
-  const recipients: CatalogRecipient[] = recipientsRaw.map((row) => ({
-    recipient: row["Получатель"] || "",
-    recommended: splitCSV(row["Рекомендованные цветы"]),
-    avoid: splitCSV(row["Нежелательно"]),
-    budget: row["Бюджет (тг)"] || "",
-    agentTip: row["Совет агенту"] || "",
-  }));
-
-  // ── Sheet 4: Дополнения к букету ──
-  const addonsSheet = workbook.Sheets["Дополнения к букету"];
-  const addonsRaw = XLSX.utils.sheet_to_json<Record<string, string>>(addonsSheet);
-
-  const addons: CatalogAddon[] = addonsRaw.map((row) => {
-    const name = row["Товар"] || "";
-    return {
-      id: slugify(name),
-      name,
-      price: parseInt(row["Цена (тг)"] || "0", 10),
-      occasions: splitCSV(row["Подходит к поводу"]),
-      description: row["Описание"] || "",
     };
   });
 
